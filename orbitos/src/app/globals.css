@@ -3,9 +3,11 @@
 :root {
   --background: #000000;
   --foreground: #ffffff;
-  --surface: #0E0E0E;
-  --card: #1A1A1A;
-  --text-secondary: #9CA3AF;
+  --surface: #030712;
+  --card: #0B1220;
+  --text-secondary: #94A3B8;
+  --accent: #3B82F6;
+  --accent-secondary: #22D3EE;
   --border: rgba(255, 255, 255, 0.08);
 }
 
@@ -35,21 +37,10 @@ body {
   overflow-x: hidden;
 }
 
-/* Subtle polka dot background pattern */
-.noise-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
-  background-size: 28px 28px;
-}
-
 /* ============================================
-   Gradient & Glow Orb Animations
+   Glow Orb Animations
    ============================================ */
 
-/* Primary hero glow — slow ambient drift */
 @keyframes glowDrift {
   0%, 100% { transform: translate(-50%, -50%) scale(1); }
   25% { transform: translate(-48%, -53%) scale(1.04); }
@@ -57,7 +48,6 @@ body {
   75% { transform: translate(-52%, -50%) scale(0.98); }
 }
 
-/* Right-side glow — opposite drift pattern */
 @keyframes glowDriftAlt {
   0%, 100% { transform: translate(-50%, -50%) scale(1); }
   25% { transform: translate(-53%, -48%) scale(0.97); }
@@ -65,7 +55,6 @@ body {
   75% { transform: translate(-50%, -49%) scale(1.01); }
 }
 
-/* Mid-section glow pulse */
 @keyframes glowPulse {
   0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
   50% { opacity: 0.75; transform: translate(-50%, -50%) scale(1.06); }
@@ -75,7 +64,6 @@ body {
    Floating Ring Animations
    ============================================ */
 
-/* Ring drift — slow vertical with slight rotation */
 @keyframes floatRingA {
   0%, 100% { transform: translate(-50%, -50%) translateY(0px) rotate(0deg); }
   50% { transform: translate(-50%, -50%) translateY(-14px) rotate(2.5deg); }
@@ -91,7 +79,6 @@ body {
   50% { transform: translate(-50%, -50%) translateY(-8px); }
 }
 
-/* Very slow ring rotation for large decorative rings */
 @keyframes floatRingSlow {
   0%, 100% { transform: translate(-50%, -50%) translateY(0px) rotate(0deg); }
   50% { transform: translate(-50%, -50%) translateY(-6px) rotate(1.5deg); }
@@ -121,42 +108,44 @@ body {
    ============================================ */
 
 @keyframes floatGeoA {
-  0%, 100% { transform: translate(-50%, -50%) rotate(35deg) translateY(0px); opacity: 0.08; }
-  50% { transform: translate(-50%, -50%) rotate(40deg) translateY(-10px); opacity: 0.12; }
+  0%, 100% { transform: rotate(35deg) translateY(0px); opacity: 0.08; }
+  50% { transform: rotate(40deg) translateY(-10px); opacity: 0.12; }
 }
 
 @keyframes floatGeoB {
-  0%, 100% { transform: translate(-50%, -50%) rotate(45deg) translateY(0px); opacity: 0.06; }
-  50% { transform: translate(-50%, -50%) rotate(50deg) translateY(8px); opacity: 0.1; }
+  0%, 100% { transform: rotate(45deg) translateY(0px); opacity: 0.06; }
+  50% { transform: rotate(50deg) translateY(8px); opacity: 0.1; }
 }
 
 /* ============================================
    Content Animations
    ============================================ */
 
-/* Gentle card float */
 @keyframes cardFloat {
   0%, 100% { transform: translateY(0px); }
   50% { transform: translateY(-2px); }
 }
 
-/* Title illumination breathing */
-@keyframes titleIlluminate {
+@keyframes titleGlow {
   0%, 100% {
-    text-shadow: 0 0 60px rgba(255,255,255,0.1), 0 0 120px rgba(255,255,255,0.05), 0 0 200px rgba(255,255,255,0.02);
+    text-shadow:
+      0 0 40px rgba(59,130,246,0.15),
+      0 0 80px rgba(59,130,246,0.08),
+      0 0 160px rgba(59,130,246,0.04);
   }
   50% {
-    text-shadow: 0 0 80px rgba(255,255,255,0.15), 0 0 160px rgba(255,255,255,0.08), 0 0 240px rgba(255,255,255,0.03);
+    text-shadow:
+      0 0 60px rgba(59,130,246,0.25),
+      0 0 120px rgba(59,130,246,0.12),
+      0 0 200px rgba(59,130,246,0.06);
   }
 }
 
-/* Scroll cue bounce */
 @keyframes scrollBounce {
   0%, 100% { transform: translateY(0); opacity: 0.5; }
   50% { transform: translateY(8px); opacity: 0.8; }
 }
 
-/* Fade-up reveal */
 @keyframes fadeUpReveal {
   from { opacity: 0; transform: translateY(40px); }
   to { opacity: 1; transform: translateY(0); }
