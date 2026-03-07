@@ -22,6 +22,7 @@ export default function DomainCard({
         relative w-full sm:w-[300px] h-[110px] rounded-[14px] text-[20px] font-medium
         cursor-pointer select-none overflow-hidden
         border
+        ${index === 1 ? "sm:mt-[24px]" : ""}
         transition-all duration-[250ms] ease-[cubic-bezier(0.25,0.1,0.25,1)]
         ${
           selected

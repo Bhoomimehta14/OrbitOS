@@ -25,37 +25,38 @@ export default function DomainSection() {
   }, []);
 
   return (
-    <section
-      ref={sectionRef}
-      className="relative flex flex-col items-center justify-center pt-[120px] pb-[160px] px-4"
-    >
-      <div
-        className="flex flex-col items-center"
-        style={{
-          opacity: isVisible ? 1 : 0,
-          transform: isVisible ? "translateY(0)" : "translateY(40px)",
-          transition: "opacity 0.6s ease, transform 0.6s ease",
-        }}
+      <section
+        id="domain-section"
+        ref={sectionRef}
+        className="relative flex flex-col items-center justify-center pt-[120px] pb-[100px] px-4"
       >
-        {/* Label */}
-        <p className="text-[16px] font-medium text-[#9CA3AF] mb-[40px]">
-          Choose your domain
-        </p>
+        <div
+          className="flex flex-col items-center"
+          style={{
+            opacity: isVisible ? 1 : 0,
+            transform: isVisible ? "translateY(0)" : "translateY(40px)",
+            transition: "opacity 0.6s ease, transform 0.6s ease",
+          }}
+        >
+          {/* Section heading */}
+          <h2 className="text-[34px] font-semibold text-white tracking-wide mb-[80px]">
+            Choose your domain
+          </h2>
 
-        {/* Domain tiles */}
-        <div className="flex flex-col sm:flex-row gap-[36px] w-full sm:w-auto">
-          {domains.map((domain, index) => (
-            <DomainCard
-              key={domain}
-              label={domain}
-              selected={selected === domain}
-              onClick={() => setSelected(domain)}
-              index={index}
-              isVisible={isVisible}
-            />
-          ))}
+          {/* Domain tiles */}
+          <div className="flex flex-col sm:flex-row gap-[32px] w-full sm:w-auto mt-[60px]">
+            {domains.map((domain, index) => (
+              <DomainCard
+                key={domain}
+                label={domain}
+                selected={selected === domain}
+                onClick={() => setSelected(domain)}
+                index={index}
+                isVisible={isVisible}
+              />
+            ))}
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
   );
 }
