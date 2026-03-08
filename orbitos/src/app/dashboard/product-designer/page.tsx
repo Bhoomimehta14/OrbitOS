@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getComments, timeAgo, type Comment } from "@/lib/comments";
 import { getChatMessages, sendChatMessage, chatTimeAgo, type ChatMessage } from "@/lib/chat";
 import { getTeam, type TeamMember } from "@/lib/team";
@@ -33,12 +34,15 @@ function useScrollReveal(trigger?: unknown) {
   return ref;
 }
 
-const navTabs = ["My Tasks", "Design Files", "FigJam Boards", "Prototypes", "Activity", "Team"];
+const navTabs = ["My Tasks", "Design Files", "OrbitJam Boards", "Activity", "Team"];
 
 export default function ProductDesignerDashboard() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const createRef = useRef<HTMLDivElement>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const searchRef = useRef<HTMLDivElement>(null);
   const [activeView, setActiveView] = useState<string | null>(null);
@@ -69,6 +73,28 @@ export default function ProductDesignerDashboard() {
     return () => { window.removeEventListener("orbitos_team_updated", load); window.removeEventListener("storage", load); clearInterval(interval); };
   }, []);
 
+  // OrbitJam board state
+  const [selectedBoard, setSelectedBoard] = useState<string | null>(null);
+  const [boardComment, setBoardComment] = useState("");
+  const [boardComments, setBoardComments] = useState<{ id: string; text: string; time: number; author: string }[]>([]);
+
+  useEffect(() => {
+    if (selectedBoard) {
+      const stored = localStorage.getItem(`orbitos_board_comments_${selectedBoard}`);
+      if (stored) setBoardComments(JSON.parse(stored));
+      else setBoardComments([]);
+    }
+  }, [selectedBoard]);
+
+  const addBoardComment = () => {
+    if (!boardComment.trim() || !selectedBoard) return;
+    const newComment = { id: Date.now().toString(), text: boardComment.trim(), time: Date.now(), author: "PD" };
+    const updated = [...boardComments, newComment];
+    setBoardComments(updated);
+    localStorage.setItem(`orbitos_board_comments_${selectedBoard}`, JSON.stringify(updated));
+    setBoardComment("");
+  };
+
   // Team chat state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
@@ -98,9 +124,10 @@ export default function ProductDesignerDashboard() {
     function handleClick(e: MouseEvent) {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchOpen(false);
       if (createRef.current && !createRef.current.contains(e.target as Node)) setCreateOpen(false);
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false);
     }
     function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setSearchOpen(false);
+      if (e.key === "Escape") { setSearchOpen(false); setProfileOpen(false); }
       if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); setSearchOpen(true); }
     }
     document.addEventListener("mousedown", handleClick);
@@ -161,10 +188,10 @@ export default function ProductDesignerDashboard() {
     <div ref={pageRef} className="min-h-screen bg-[#000000]" style={{ fontFamily: "'Inter', sans-serif" }}>
 
       {/* ── Header ── */}
-      <header className="fixed top-0 left-0 right-0 z-50 flex flex-col" style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(20px)" }}>
+      <header className="fixed top-0 left-0 right-0 z-50 flex flex-col" style={{ background: "#000000" }}>
 
-        {/* Row 1 — OrbitOS | Search | Create */}
-        <div className="h-[52px] flex items-center justify-between px-6" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        {/* Row 1 — OrbitOS | Search (center) | Create + Profile (right) */}
+        <div className="h-[52px] flex items-center px-6 relative" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
 
           {/* Left — OrbitOS home button */}
           <a
@@ -172,14 +199,11 @@ export default function ProductDesignerDashboard() {
             className="flex items-center gap-2.5 no-underline transition-opacity duration-200 hover:opacity-80"
             onClick={(e) => { e.preventDefault(); setActiveView(null); }}
           >
-            <div className="w-[24px] h-[24px] rounded-[7px] flex items-center justify-center" style={{ background: "linear-gradient(135deg, #FFF34A, #F5D100)" }}>
-              <span className="text-[12px] font-bold" style={{ color: "#000000" }}>O</span>
-            </div>
-            <span className="text-[15px] font-semibold tracking-[-0.02em]" style={{ color: "#ffffff" }}>OrbitOS</span>
+            <span className="text-[24px] font-bold tracking-[-0.02em] ml-4" style={{ color: "#ffffff" }}>OrbitOS</span>
           </a>
 
-          {/* Center — Search bar */}
-          <div className="relative" ref={searchRef}>
+          {/* Center — Search bar (absolutely centered) */}
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" ref={searchRef}>
             <div
               className="flex items-center gap-2.5 h-[34px] w-[420px] rounded-[10px] px-3.5 cursor-text transition-all duration-200"
               style={{ background: searchOpen ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.04)", border: searchOpen ? "1px solid rgba(255,255,255,0.14)" : "1px solid rgba(255,255,255,0.08)" }}
@@ -226,7 +250,10 @@ export default function ProductDesignerDashboard() {
             </div>
           </div>
 
-          {/* Right — Create button */}
+          {/* Right — Create + Profile grouped at far right */}
+          <div className="flex items-center gap-3" style={{ marginLeft: "auto" }}>
+
+          {/* Create button */}
           <div className="relative" ref={createRef}>
             <button
               onClick={() => setCreateOpen(!createOpen)}
@@ -246,7 +273,7 @@ export default function ProductDesignerDashboard() {
               <div className="py-2">
                 {[
                   { label: "Create Design Task", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFF34A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-5"/></svg> },
-                  { label: "Create FigJam Board", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFF34A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="12" y1="8" x2="12" y2="16"/></svg> },
+                  { label: "Create OrbitJam Board", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFF34A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="12" y1="8" x2="12" y2="16"/></svg> },
                   { label: "Upload Design File", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFF34A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> },
                   { label: "Create Prototype", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFF34A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg> },
                 ].map((item) => (
@@ -258,10 +285,38 @@ export default function ProductDesignerDashboard() {
               </div>
             </div>
           </div>
+
+          {/* Profile */}
+          <div className="relative" ref={profileRef}>
+            <button
+              onClick={() => setProfileOpen(!profileOpen)}
+              className="w-[34px] h-[34px] rounded-full flex items-center justify-center text-[13px] font-bold cursor-pointer border-none transition-all duration-200"
+              style={{ background: profileOpen ? "rgba(255,243,74,0.25)" : "rgba(255,243,74,0.12)", color: "#FFF34A", border: "1px solid rgba(255,243,74,0.2)" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,243,74,0.25)"; e.currentTarget.style.boxShadow = "0 0 20px rgba(255,243,74,0.15)"; }}
+              onMouseLeave={(e) => { if (!profileOpen) { e.currentTarget.style.background = "rgba(255,243,74,0.12)"; e.currentTarget.style.boxShadow = "none"; } }}
+            >
+              Y
+            </button>
+            <div
+              className="absolute top-[42px] right-0 w-[180px] rounded-[12px] overflow-hidden transition-all duration-250"
+              style={{ background: "#0A0A0A", border: profileOpen ? "1px solid rgba(255,255,255,0.1)" : "1px solid transparent", boxShadow: profileOpen ? "0 20px 60px rgba(0,0,0,1), 0 0 40px rgba(0,0,0,0.8)" : "none", maxHeight: profileOpen ? "120px" : "0px", opacity: profileOpen ? 1 : 0, pointerEvents: profileOpen ? "auto" : "none" }}
+            >
+              <div className="p-2">
+                <button className="w-full flex items-center gap-3 px-4 py-3 text-[13px] font-medium border-none cursor-pointer transition-all duration-150 text-left rounded-[8px]" style={{ background: "transparent", color: "#ffffff" }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.05)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"} onClick={() => setProfileOpen(false)}
+                ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFF34A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Set up Profile</button>
+                <button className="w-full flex items-center gap-3 px-4 py-3 text-[13px] font-medium border-none cursor-pointer transition-all duration-150 text-left rounded-[8px]" style={{ background: "transparent", color: "#ffffff" }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.05)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"} onClick={() => { setProfileOpen(false); router.push("/"); }}
+                ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7A7A7A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Logout</button>
+              </div>
+            </div>
+          </div>
+
+          </div>{/* end Create + Profile group */}
         </div>
 
         {/* Row 2 — Nav tabs */}
-        <div className="h-[40px] flex items-center justify-center gap-6" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        <div className="h-[40px] flex items-center justify-center gap-6 overflow-x-auto whitespace-nowrap" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", scrollbarWidth: "none" }}>
           {navTabs.map((tab) => (
             <button
               key={tab}
@@ -284,7 +339,7 @@ export default function ProductDesignerDashboard() {
           MY TASKS PAGE
          ════════════════════════════════════════════ */}
       {activeView === "My Tasks" && (
-        <main className="pt-[108px] px-6 pb-16">
+        <main style={{ paddingTop: "130px", paddingLeft: "24px", paddingRight: "24px", paddingBottom: "64px" }}>
           <BackButton />
           <h1 className="text-[28px] font-bold mb-1" style={{ color: "#ffffff" }}>My Tasks</h1>
           <p className="text-[14px] mb-10" style={{ color: "#7A7A7A" }}>Your assigned design tasks and deadlines</p>
@@ -380,7 +435,7 @@ export default function ProductDesignerDashboard() {
           DESIGN FILES PAGE
          ════════════════════════════════════════════ */}
       {activeView === "Design Files" && (
-        <main className="pt-[108px] px-6 pb-16">
+        <main style={{ paddingTop: "130px", paddingLeft: "24px", paddingRight: "24px", paddingBottom: "64px" }}>
           <BackButton />
           <h1 className="text-[28px] font-bold mb-1" style={{ color: "#ffffff" }}>Design Files</h1>
           <p className="text-[14px] mb-10" style={{ color: "#7A7A7A" }}>Your design files, screens, and iterations</p>
@@ -469,10 +524,10 @@ export default function ProductDesignerDashboard() {
       {/* ════════════════════════════════════════════
           FIGJAM BOARDS PAGE
          ════════════════════════════════════════════ */}
-      {activeView === "FigJam Boards" && (
-        <main className="pt-[108px] px-6 pb-16">
+      {activeView === "OrbitJam Boards" && (
+        <main style={{ paddingTop: "130px", paddingLeft: "24px", paddingRight: "24px", paddingBottom: "64px" }}>
           <BackButton />
-          <h1 className="text-[28px] font-bold mb-1" style={{ color: "#ffffff" }}>FigJam Boards</h1>
+          <h1 className="text-[28px] font-bold mb-1" style={{ color: "#ffffff" }}>OrbitJam Boards</h1>
           <p className="text-[14px] mb-10" style={{ color: "#7A7A7A" }}>Brainstorm, ideate, and collaborate with your team</p>
 
           <div className="flex flex-col gap-[38px]">
@@ -565,103 +620,11 @@ export default function ProductDesignerDashboard() {
       {/* ════════════════════════════════════════════
           PROTOTYPES PAGE
          ════════════════════════════════════════════ */}
-      {activeView === "Prototypes" && (
-        <main className="pt-[108px] px-6 pb-16">
-          <BackButton />
-          <h1 className="text-[28px] font-bold mb-1" style={{ color: "#ffffff" }}>Prototypes</h1>
-          <p className="text-[14px] mb-10" style={{ color: "#7A7A7A" }}>Interactive prototypes and user flow testing</p>
-
-          <div className="flex flex-col gap-[38px]">
-
-            {/* Panel 1: My Prototypes */}
-            <div className="rounded-[16px] p-6" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-              <SectionTitle title="My Prototypes" count="6 prototypes" />
-              <div className="grid grid-cols-3 gap-4">
-                {[
-                  { name: "Homepage Flow", screens: 12, interactions: 24, updated: "2 hours ago", status: "Active" },
-                  { name: "Mobile Onboarding", screens: 8, interactions: 16, updated: "1 day ago", status: "Active" },
-                  { name: "Checkout Experience", screens: 6, interactions: 18, updated: "2 days ago", status: "In Review" },
-                  { name: "Settings Navigation", screens: 5, interactions: 10, updated: "3 days ago", status: "Draft" },
-                  { name: "Dashboard Walkthrough", screens: 15, interactions: 32, updated: "4 days ago", status: "Active" },
-                  { name: "Error State Flows", screens: 4, interactions: 8, updated: "5 days ago", status: "Draft" },
-                ].map((p) => (
-                  <Card key={p.name} className="cursor-pointer">
-                    <div className="w-full h-[140px] rounded-[10px] mb-4 flex items-center justify-center" style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.06))", border: "1px solid rgba(255,255,255,0.06)" }}>
-                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#7A7A7A" strokeWidth="1"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                    </div>
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-[14px] font-semibold" style={{ color: "#ffffff" }}>{p.name}</p>
-                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ background: p.status === "Active" ? "rgba(74,222,128,0.12)" : p.status === "In Review" ? "rgba(255,243,74,0.12)" : "rgba(255,255,255,0.06)", color: p.status === "Active" ? "#4ADE80" : p.status === "In Review" ? "#FFF34A" : "#B3B3B3", border: `1px solid ${p.status === "Active" ? "rgba(74,222,128,0.18)" : p.status === "In Review" ? "rgba(255,243,74,0.18)" : "rgba(255,255,255,0.08)"}` }}>{p.status}</span>
-                    </div>
-                    <p className="text-[11px]" style={{ color: "#7A7A7A" }}>{p.screens} screens &middot; {p.interactions} interactions &middot; {p.updated}</p>
-                  </Card>
-                ))}
-              </div>
-            </div>
-
-            {/* Panel 2: User Testing */}
-            <div className="rounded-[16px] p-6" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-              <SectionTitle title="User Testing Results" count="4 tests" />
-              <div className="flex flex-col gap-3">
-                {[
-                  { name: "Homepage Flow Test", testers: 12, completion: "92%", avgTime: "2m 34s", result: "Passed", color: "#4ADE80" },
-                  { name: "Checkout Usability", testers: 8, completion: "78%", avgTime: "4m 12s", result: "Needs Work", color: "#FBBF24" },
-                  { name: "Onboarding First Run", testers: 15, completion: "85%", avgTime: "3m 45s", result: "Passed", color: "#4ADE80" },
-                  { name: "Settings Navigation", testers: 6, completion: "65%", avgTime: "5m 20s", result: "Failed", color: "#F87171" },
-                ].map((t) => (
-                  <Card key={t.name}>
-                    <div className="flex items-center gap-4">
-                      <div className="w-[36px] h-[36px] rounded-[8px] flex items-center justify-center flex-shrink-0" style={{ background: `${t.color}12`, border: `1px solid ${t.color}18` }}>
-                        {t.result === "Passed" && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4ADE80" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
-                        {t.result === "Needs Work" && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>}
-                        {t.result === "Failed" && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>}
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-[13px] font-medium" style={{ color: "#ffffff" }}>{t.name}</p>
-                        <p className="text-[11px] mt-0.5" style={{ color: "#7A7A7A" }}>{t.testers} testers &middot; {t.completion} completion &middot; avg {t.avgTime}</p>
-                      </div>
-                      <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full" style={{ background: `${t.color}12`, color: t.color, border: `1px solid ${t.color}18` }}>{t.result}</span>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </div>
-
-            {/* Panel 3: Feedback & Comments */}
-            <div className="rounded-[16px] p-6" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-              <SectionTitle title="Prototype Feedback" count="5 comments" />
-              <div className="flex flex-col gap-3">
-                {[
-                  { reviewer: "Sarah Chen", avatar: "SC", feedback: "The transition between checkout steps feels too abrupt — maybe add a slide animation?", prototype: "Checkout Experience", time: "2 hours ago", color: "#4ADE80" },
-                  { reviewer: "Jordan Lee", avatar: "JL", feedback: "Love the onboarding progress indicator. Can we add skip functionality?", prototype: "Mobile Onboarding", time: "5 hours ago", color: "#FFF34A" },
-                  { reviewer: "Priya Patel", avatar: "PP", feedback: "The back button on settings doesn't navigate correctly in the prototype.", prototype: "Settings Navigation", time: "1 day ago", color: "#A78BFA" },
-                  { reviewer: "Marcus Wu", avatar: "MW", feedback: "Dashboard walkthrough is really polished. Ready for stakeholder review.", prototype: "Dashboard Walkthrough", time: "1 day ago", color: "#38BDF8" },
-                  { reviewer: "Alex Kim", avatar: "AK", feedback: "Error states could use more descriptive messaging — users were confused in testing.", prototype: "Error State Flows", time: "2 days ago", color: "#F87171" },
-                ].map((f) => (
-                  <Card key={f.feedback}>
-                    <div className="flex items-start gap-3">
-                      <div className="w-[28px] h-[28px] rounded-full flex items-center justify-center flex-shrink-0 text-[9px] font-bold mt-0.5" style={{ background: `${f.color}15`, border: `1px solid ${f.color}20`, color: f.color }}>{f.avatar}</div>
-                      <div className="flex-1">
-                        <p className="text-[11px] font-medium" style={{ color: "#ffffff" }}>{f.reviewer} <span style={{ color: "#7A7A7A", fontWeight: 400 }}>on {f.prototype}</span></p>
-                        <p className="text-[11px] mt-1 leading-[1.5]" style={{ color: "#B3B3B3" }}>{f.feedback}</p>
-                        <p className="text-[9px] mt-1.5" style={{ color: "#7A7A7A" }}>{f.time}</p>
-                      </div>
-                      <button className="h-[26px] px-3 rounded-[7px] text-[10px] font-medium border-none cursor-pointer transition-all duration-150 flex-shrink-0" style={{ background: "rgba(255,243,74,0.1)", color: "#FFF34A", border: "1px solid rgba(255,243,74,0.15)" }} onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,243,74,0.18)"} onMouseLeave={(e) => e.currentTarget.style.background = "rgba(255,243,74,0.1)"}>Reply</button>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </div>
-
-          </div>
-        </main>
-      )}
-
       {/* ════════════════════════════════════════════
           ACTIVITY PAGE
          ════════════════════════════════════════════ */}
       {activeView === "Activity" && (
-        <main className="pt-[108px] px-6 pb-16">
+        <main style={{ paddingTop: "130px", paddingLeft: "24px", paddingRight: "24px", paddingBottom: "64px" }}>
           <BackButton />
           <h1 className="text-[28px] font-bold mb-1" style={{ color: "#ffffff" }}>Activity</h1>
           <p className="text-[14px] mb-10" style={{ color: "#7A7A7A" }}>Your recent activity and team updates</p>
@@ -818,7 +781,7 @@ export default function ProductDesignerDashboard() {
           TEAM PAGE (Product Designer — view only)
          ════════════════════════════════════════════ */}
       {activeView === "Team" && (
-        <main className="pt-[108px] px-6 pb-16">
+        <main style={{ paddingTop: "130px", paddingLeft: "24px", paddingRight: "24px", paddingBottom: "64px" }}>
           <BackButton />
           <h1 className="text-[28px] font-bold mb-1" style={{ color: "#ffffff" }}>Team</h1>
           <p className="text-[14px] mb-10" style={{ color: "#7A7A7A" }}>View your teammates and what they are working on</p>
@@ -910,7 +873,7 @@ export default function ProductDesignerDashboard() {
       {/* ── Hero Section ── */}
       <section
         className="relative flex flex-col items-center justify-center text-center px-10"
-        style={{ height: "88vh", paddingTop: "92px" }}
+        style={{ height: "100vh", paddingTop: "130px", zIndex: 2, background: "#000000" }}
       >
         <div
           className="absolute bottom-[-20%] left-1/2 -translate-x-1/2 pointer-events-none"
@@ -994,9 +957,9 @@ export default function ProductDesignerDashboard() {
             </div>
           </div>
 
-          {/* Panel 3: FigJam Boards */}
+          {/* Panel 3: OrbitJam Boards */}
           <div data-reveal data-reveal-delay="200" className="reveal-el rounded-[16px] p-6 flex flex-col" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <SectionTitle title="FigJam Boards" count="3 active" />
+            <SectionTitle title="OrbitJam Boards" count="3 active" />
             <div className="flex flex-col gap-3 flex-1">
               {[
                 { name: "Homepage Brainstorm", collaborators: 4, stickies: 32, status: "Active", color: "#4ADE80" },

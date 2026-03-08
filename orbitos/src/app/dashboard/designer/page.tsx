@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { addComment, getComments, timeAgo, type Comment } from "@/lib/comments";
 import { getChatMessages, sendChatMessage, chatTimeAgo, type ChatMessage } from "@/lib/chat";
 import { getTeam, addTeamMember, assignTask, type TeamMember } from "@/lib/team";
@@ -34,16 +35,42 @@ function useScrollReveal(trigger?: unknown) {
   return ref;
 }
 
-const navTabs = ["Design Tasks", "Design System", "Reviews", "Prototypes", "Activity", "Team"];
+const navTabs = ["Design Tasks", "Design System", "Reviews", "Activity", "Team", "OrbitJam"];
 
 export default function DesignerDashboard() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const createRef = useRef<HTMLDivElement>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const searchRef = useRef<HTMLDivElement>(null);
   const [activeView, setActiveView] = useState<string | null>(null);
   const pageRef = useScrollReveal(activeView);
+
+  // OrbitJam state
+  const [selectedBoard, setSelectedBoard] = useState<string | null>(null);
+  const [boardComment, setBoardComment] = useState("");
+  const [boardComments, setBoardComments] = useState<{ id: string; text: string; time: number; author: string }[]>([]);
+
+  // Load/save board comments from localStorage
+  useEffect(() => {
+    if (selectedBoard) {
+      const stored = localStorage.getItem(`orbitos_board_comments_${selectedBoard}`);
+      if (stored) setBoardComments(JSON.parse(stored));
+      else setBoardComments([]);
+    }
+  }, [selectedBoard]);
+
+  const addBoardComment = () => {
+    if (!boardComment.trim() || !selectedBoard) return;
+    const newComment = { id: Date.now().toString(), text: boardComment.trim(), time: Date.now(), author: "DL" };
+    const updated = [...boardComments, newComment];
+    setBoardComments(updated);
+    localStorage.setItem(`orbitos_board_comments_${selectedBoard}`, JSON.stringify(updated));
+    setBoardComment("");
+  };
 
   // Comment modal state
   const [commentModal, setCommentModal] = useState<{ open: boolean; designer: string; project: string }>({ open: false, designer: "", project: "" });
@@ -146,9 +173,12 @@ export default function DesignerDashboard() {
       if (createRef.current && !createRef.current.contains(e.target as Node)) {
         setCreateOpen(false);
       }
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setProfileOpen(false);
+      }
     }
     function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setSearchOpen(false);
+      if (e.key === "Escape") { setSearchOpen(false); setProfileOpen(false); }
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         setSearchOpen(true);
@@ -217,11 +247,11 @@ export default function DesignerDashboard() {
     <div ref={pageRef} className="min-h-screen bg-[#000000]" style={{ fontFamily: "'Inter', sans-serif" }}>
 
       {/* ── Header ── */}
-      <header className="fixed top-0 left-0 right-0 z-50 flex flex-col" style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(20px)" }}>
+      <header className="fixed top-0 left-0 right-0 z-50 flex flex-col" style={{ background: "#000000" }}>
 
-        {/* Row 1 — OrbitOS | Search | Create */}
+        {/* Row 1 — OrbitOS | Search (center) | Create + Profile (right) */}
         <div
-          className="h-[52px] flex items-center justify-between px-6"
+          className="h-[52px] flex items-center px-6 relative"
           style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
         >
           {/* Left — OrbitOS home button */}
@@ -230,19 +260,11 @@ export default function DesignerDashboard() {
             className="flex items-center gap-2.5 no-underline transition-opacity duration-200 hover:opacity-80"
             onClick={(e) => { e.preventDefault(); setActiveView(null); }}
           >
-            <div
-              className="w-[24px] h-[24px] rounded-[7px] flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg, #FFF34A, #F5D100)" }}
-            >
-              <span className="text-[12px] font-bold" style={{ color: "#000000" }}>O</span>
-            </div>
-            <span className="text-[15px] font-semibold tracking-[-0.02em]" style={{ color: "#ffffff" }}>
-              OrbitOS
-            </span>
+            <span className="text-[24px] font-bold tracking-[-0.02em] ml-4" style={{ color: "#ffffff" }}>OrbitOS</span>
           </a>
 
-          {/* Center — Search bar with dropdown */}
-          <div className="relative" ref={searchRef}>
+          {/* Center — Search bar (absolutely centered) */}
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" ref={searchRef}>
             <div
               className="flex items-center gap-2.5 h-[34px] w-[420px] rounded-[10px] px-3.5 cursor-text transition-all duration-200"
               style={{
@@ -329,7 +351,10 @@ export default function DesignerDashboard() {
             </div>
           </div>
 
-          {/* Right — Create button with dropdown */}
+          {/* Right — Create + Profile grouped at far right */}
+          <div className="flex items-center gap-3" style={{ marginLeft: "auto" }}>
+
+          {/* Create button with dropdown */}
           <div className="relative" ref={createRef}>
             <button
               onClick={() => setCreateOpen(!createOpen)}
@@ -358,7 +383,7 @@ export default function DesignerDashboard() {
               <div className="py-2">
                 {[
                   { label: "Create Design Task", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFF34A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-5"/></svg> },
-                  { label: "Create FigJam Board", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFF34A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="12" y1="8" x2="12" y2="16"/></svg> },
+                  { label: "Create OrbitJam Board", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFF34A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="12" y1="8" x2="12" y2="16"/></svg> },
                   { label: "Upload Design File", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFF34A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> },
                   { label: "Create Design System Component", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFF34A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> },
                 ].map((item) => (
@@ -377,12 +402,40 @@ export default function DesignerDashboard() {
               </div>
             </div>
           </div>
+
+          {/* Profile */}
+          <div className="relative" ref={profileRef}>
+            <button
+              onClick={() => setProfileOpen(!profileOpen)}
+              className="w-[34px] h-[34px] rounded-full flex items-center justify-center text-[13px] font-bold cursor-pointer border-none transition-all duration-200"
+              style={{ background: profileOpen ? "rgba(255,243,74,0.25)" : "rgba(255,243,74,0.12)", color: "#FFF34A", border: "1px solid rgba(255,243,74,0.2)" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,243,74,0.25)"; e.currentTarget.style.boxShadow = "0 0 20px rgba(255,243,74,0.15)"; }}
+              onMouseLeave={(e) => { if (!profileOpen) { e.currentTarget.style.background = "rgba(255,243,74,0.12)"; e.currentTarget.style.boxShadow = "none"; } }}
+            >
+              Y
+            </button>
+            <div
+              className="absolute top-[42px] right-0 w-[180px] rounded-[12px] overflow-hidden transition-all duration-250"
+              style={{ background: "#0A0A0A", border: profileOpen ? "1px solid rgba(255,255,255,0.1)" : "1px solid transparent", boxShadow: profileOpen ? "0 20px 60px rgba(0,0,0,1), 0 0 40px rgba(0,0,0,0.8)" : "none", maxHeight: profileOpen ? "120px" : "0px", opacity: profileOpen ? 1 : 0, pointerEvents: profileOpen ? "auto" : "none" }}
+            >
+              <div className="p-2">
+                <button className="w-full flex items-center gap-3 px-4 py-3 text-[13px] font-medium border-none cursor-pointer transition-all duration-150 text-left rounded-[8px]" style={{ background: "transparent", color: "#ffffff" }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.05)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"} onClick={() => setProfileOpen(false)}
+                ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFF34A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Set up Profile</button>
+                <button className="w-full flex items-center gap-3 px-4 py-3 text-[13px] font-medium border-none cursor-pointer transition-all duration-150 text-left rounded-[8px]" style={{ background: "transparent", color: "#ffffff" }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.05)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"} onClick={() => { setProfileOpen(false); router.push("/"); }}
+                ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7A7A7A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Logout</button>
+              </div>
+            </div>
+          </div>
+
+          </div>{/* end Create + Profile group */}
         </div>
 
         {/* Row 2 — Simple clickable nav tabs */}
         <div
-          className="h-[40px] flex items-center justify-center gap-6"
-          style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+          className="h-[40px] flex items-center justify-center gap-6 overflow-x-auto whitespace-nowrap"
+          style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", scrollbarWidth: "none" }}
         >
           {navTabs.map((tab) => (
             <button
@@ -412,7 +465,7 @@ export default function DesignerDashboard() {
           DESIGN TASKS PAGE
          ════════════════════════════════════════════ */}
       {activeView === "Design Tasks" && (
-        <main className="pt-[108px] px-6 pb-16">
+        <main style={{ paddingTop: "130px", paddingLeft: "24px", paddingRight: "24px", paddingBottom: "64px" }}>
           <BackButton />
           <h1 className="text-[28px] font-bold mb-1" style={{ color: "#ffffff" }}>Design Tasks</h1>
           <p className="text-[14px] mb-10" style={{ color: "#7A7A7A" }}>Manage, assign, and track all design work</p>
@@ -510,7 +563,7 @@ export default function DesignerDashboard() {
           DESIGN SYSTEM PAGE
          ════════════════════════════════════════════ */}
       {activeView === "Design System" && (
-        <main className="pt-[108px] px-6 pb-16">
+        <main style={{ paddingTop: "130px", paddingLeft: "24px", paddingRight: "24px", paddingBottom: "64px" }}>
           <BackButton />
           <h1 className="text-[28px] font-bold mb-1" style={{ color: "#ffffff" }}>Design System</h1>
           <p className="text-[14px] mb-10" style={{ color: "#7A7A7A" }}>Maintain UI consistency across all products</p>
@@ -547,7 +600,7 @@ export default function DesignerDashboard() {
           REVIEWS PAGE
          ════════════════════════════════════════════ */}
       {activeView === "Reviews" && (
-        <main className="pt-[108px] px-6 pb-16">
+        <main style={{ paddingTop: "130px", paddingLeft: "24px", paddingRight: "24px", paddingBottom: "64px" }}>
           <BackButton />
           <h1 className="text-[28px] font-bold mb-1" style={{ color: "#ffffff" }}>Reviews</h1>
           <p className="text-[14px] mb-10" style={{ color: "#7A7A7A" }}>Review and approval workflow for all designs</p>
@@ -674,250 +727,86 @@ export default function DesignerDashboard() {
       {/* ════════════════════════════════════════════
           PROTOTYPES PAGE
          ════════════════════════════════════════════ */}
-      {activeView === "Prototypes" && (
-        <main className="pt-[108px] px-6 pb-16">
-          <BackButton />
-          <h1 className="text-[28px] font-bold mb-1" style={{ color: "#ffffff" }}>Prototypes</h1>
-          <p className="text-[14px] mb-10" style={{ color: "#7A7A7A" }}>Access interactive prototypes, user flows, and tests</p>
-
-          <div className="flex flex-col gap-[38px]">
-
-            {/* Panel 1: Prototype Library */}
-            <div className="rounded-[16px] p-6" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-              <SectionTitle title="Prototype Library" count="8 prototypes" />
-              <div className="grid grid-cols-3 gap-4">
-                {[
-                  { name: "Homepage Redesign", screens: 12, lastEdited: "2 hours ago", status: "Active" },
-                  { name: "Mobile App v3", screens: 24, lastEdited: "1 day ago", status: "Active" },
-                  { name: "Onboarding Flow", screens: 8, lastEdited: "2 days ago", status: "Draft" },
-                  { name: "Checkout Experience", screens: 6, lastEdited: "3 days ago", status: "Active" },
-                  { name: "Dashboard Analytics", screens: 15, lastEdited: "4 days ago", status: "Archived" },
-                  { name: "Settings Redesign", screens: 9, lastEdited: "5 days ago", status: "Draft" },
-                ].map((p) => (
-                  <Card key={p.name} className="cursor-pointer">
-                    <div className="w-full h-[140px] rounded-[10px] mb-4 flex items-center justify-center" style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.06))", border: "1px solid rgba(255,255,255,0.06)" }}>
-                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#7A7A7A" strokeWidth="1"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                    </div>
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-[14px] font-semibold" style={{ color: "#ffffff" }}>{p.name}</p>
-                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ background: p.status === "Active" ? "rgba(74,222,128,0.12)" : p.status === "Draft" ? "rgba(255,255,255,0.06)" : "rgba(122,122,122,0.12)", color: p.status === "Active" ? "#4ADE80" : p.status === "Draft" ? "#B3B3B3" : "#7A7A7A", border: `1px solid ${p.status === "Active" ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.08)"}` }}>{p.status}</span>
-                    </div>
-                    <p className="text-[11px]" style={{ color: "#7A7A7A" }}>{p.screens} screens &middot; Edited {p.lastEdited}</p>
-                  </Card>
-                ))}
-              </div>
-            </div>
-
-            {/* Panel 2: User Flow Maps */}
-            <div className="rounded-[16px] p-6" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-              <SectionTitle title="User Flow Maps" count="5 flows" />
-              <div className="flex flex-col gap-3">
-                {[
-                  { name: "Sign Up to First Project", steps: 8, completion: "78%", color: "#4ADE80" },
-                  { name: "Checkout Flow", steps: 5, completion: "92%", color: "#4ADE80" },
-                  { name: "Onboarding to Dashboard", steps: 12, completion: "65%", color: "#FBBF24" },
-                  { name: "Password Recovery", steps: 4, completion: "95%", color: "#4ADE80" },
-                  { name: "Team Invitation", steps: 6, completion: "54%", color: "#F87171" },
-                ].map((f) => (
-                  <Card key={f.name}>
-                    <div className="flex items-center gap-4">
-                      <div className="w-[36px] h-[36px] rounded-[8px] flex items-center justify-center flex-shrink-0" style={{ background: "rgba(255,243,74,0.08)", border: "1px solid rgba(255,243,74,0.12)" }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFF34A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-[13px] font-medium" style={{ color: "#ffffff" }}>{f.name}</p>
-                        <p className="text-[11px] mt-0.5" style={{ color: "#7A7A7A" }}>{f.steps} steps</p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="w-[100px] h-[4px] rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
-                          <div className="h-full rounded-full" style={{ width: f.completion, background: f.color }} />
-                        </div>
-                        <span className="text-[11px] font-medium" style={{ color: f.color }}>{f.completion}</span>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </div>
-
-            {/* Panel 3: Interaction Tests */}
-            <div className="rounded-[16px] p-6" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-              <SectionTitle title="Interaction Tests" count="6 tests" />
-              <div className="grid grid-cols-2 gap-4">
-            {[
-              { name: "Button Click States", result: "Passed", testers: 12, date: "2 days ago" },
-              { name: "Form Validation Flow", result: "Failed", testers: 8, date: "3 days ago" },
-              { name: "Navigation Accessibility", result: "Passed", testers: 15, date: "4 days ago" },
-              { name: "Modal Open/Close", result: "Passed", testers: 10, date: "5 days ago" },
-              { name: "Drag and Drop Reorder", result: "In Progress", testers: 5, date: "1 day ago" },
-              { name: "Responsive Breakpoints", result: "Failed", testers: 7, date: "2 days ago" },
-            ].map((t) => (
-              <Card key={t.name}>
-                <div className="flex items-center gap-4">
-                  <div className="w-[36px] h-[36px] rounded-[8px] flex items-center justify-center flex-shrink-0" style={{ background: t.result === "Passed" ? "rgba(74,222,128,0.1)" : t.result === "Failed" ? "rgba(248,113,113,0.1)" : "rgba(56,189,248,0.1)", border: `1px solid ${t.result === "Passed" ? "rgba(74,222,128,0.18)" : t.result === "Failed" ? "rgba(248,113,113,0.18)" : "rgba(56,189,248,0.18)"}` }}>
-                    {t.result === "Passed" && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4ADE80" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
-                    {t.result === "Failed" && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>}
-                    {t.result === "In Progress" && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-[13px] font-medium" style={{ color: "#ffffff" }}>{t.name}</p>
-                    <p className="text-[10px] mt-0.5" style={{ color: "#7A7A7A" }}>{t.testers} testers &middot; {t.date}</p>
-                  </div>
-                  <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full" style={{ background: t.result === "Passed" ? "rgba(74,222,128,0.12)" : t.result === "Failed" ? "rgba(248,113,113,0.12)" : "rgba(56,189,248,0.12)", color: t.result === "Passed" ? "#4ADE80" : t.result === "Failed" ? "#F87171" : "#38BDF8", border: `1px solid ${t.result === "Passed" ? "rgba(74,222,128,0.18)" : t.result === "Failed" ? "rgba(248,113,113,0.18)" : "rgba(56,189,248,0.18)"}` }}>{t.result}</span>
-                </div>
-              </Card>
-            ))}
-              </div>
-            </div>
-
-          </div>
-        </main>
-      )}
-
       {/* ════════════════════════════════════════════
           ACTIVITY PAGE
          ════════════════════════════════════════════ */}
       {activeView === "Activity" && (
-        <main className="pt-[108px] px-6 pb-16">
+        <main style={{ paddingTop: "130px", paddingLeft: "72px", paddingRight: "72px", paddingBottom: "64px" }}>
           <BackButton />
           <h1 className="text-[28px] font-bold mb-1" style={{ color: "#ffffff" }}>Activity</h1>
-          <p className="text-[14px] mb-10" style={{ color: "#7A7A7A" }}>Track all team activity, comments, and updates</p>
+          <p className="text-[14px] mb-10" style={{ color: "#7A7A7A" }}>Stay updated on everything happening across your design workspace.</p>
 
-          <div className="grid grid-cols-3 gap-[38px]">
-            {/* Panel 1: Activity Feed */}
-            <div className="col-span-2 rounded-[16px] p-6" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-              <SectionTitle title="Activity Feed" />
-              <div className="flex flex-col gap-0">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: "38px", alignItems: "start" }}>
+
+            {/* Left — My Activity (tall card) */}
+            <div className="rounded-[16px]" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", padding: "28px" }}>
+              <h2 className="text-[18px] font-semibold mb-6" style={{ color: "#ffffff" }}>My Activity</h2>
+              <div className="flex flex-col">
                 {[
-                  { avatar: "SC", name: "Sarah Chen", action: "uploaded a new screen", target: "Homepage Hero v3", time: "2 min ago", color: "#4ADE80" },
-                  { avatar: "AK", name: "Alex Kim", action: "updated component", target: "Primary Button", time: "18 min ago", color: "#38BDF8" },
-                  { avatar: "JL", name: "Jordan Lee", action: "requested review for", target: "Settings Page Layout", time: "34 min ago", color: "#FFF34A" },
-                  { avatar: "PP", name: "Priya Patel", action: "commented on", target: "Onboarding Flow", time: "1 hr ago", color: "#A78BFA" },
-                  { avatar: "MW", name: "Marcus Wu", action: "uploaded a new screen", target: "Card Component v2", time: "1 hr ago", color: "#4ADE80" },
-                  { avatar: "SC", name: "Sarah Chen", action: "approved", target: "Mobile Nav Drawer", time: "2 hr ago", color: "#4ADE80" },
-                  { avatar: "AK", name: "Alex Kim", action: "requested changes on", target: "Checkout Flow", time: "2 hr ago", color: "#FBBF24" },
-                  { avatar: "JL", name: "Jordan Lee", action: "updated component", target: "Input Field", time: "3 hr ago", color: "#38BDF8" },
-                  { avatar: "PP", name: "Priya Patel", action: "uploaded a new screen", target: "Profile Settings", time: "4 hr ago", color: "#4ADE80" },
-                  { avatar: "MW", name: "Marcus Wu", action: "commented on", target: "Design System Colors", time: "5 hr ago", color: "#A78BFA" },
-                ].map((item, i) => (
-                  <div
-                    key={`${item.avatar}-${i}`}
-                    className="flex items-center gap-3 py-3.5 px-2 transition-all duration-150 rounded-[8px]"
-                    style={{ borderBottom: i < 9 ? "1px solid rgba(255,255,255,0.04)" : "none" }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.03)"}
-                    onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                  { action: "Uploaded new screen — Homepage Hero v3", user: "Sarah Chen", type: "upload", time: "2m" },
+                  { action: "Updated component — Primary Button", user: "Alex Kim", type: "update", time: "18m" },
+                  { action: "Requested review — Settings Page Layout", user: "Jordan Lee", type: "review", time: "34m" },
+                  { action: "Commented on Onboarding Flow", user: "Priya Patel", type: "comment", time: "1h" },
+                  { action: "Uploaded new screen — Card Component v2", user: "Marcus Wu", type: "upload", time: "1h" },
+                  { action: "Approved Mobile Nav Drawer", user: "Sarah Chen", type: "approved", time: "2h" },
+                  { action: "Requested changes — Checkout Flow", user: "Alex Kim", type: "review", time: "2h" },
+                  { action: "Updated component — Input Field", user: "Jordan Lee", type: "update", time: "3h" },
+                  { action: "Uploaded new screen — Profile Settings", user: "Priya Patel", type: "upload", time: "4h" },
+                  { action: "Commented on Design System Colors", user: "Marcus Wu", type: "comment", time: "5h" },
+                ].map((a, i, arr) => {
+                  const typeLabels: Record<string, { label: string; color: string; bg: string }> = {
+                    upload: { label: "Upload", color: "#4ADE80", bg: "rgba(74,222,128,0.1)" },
+                    update: { label: "Update", color: "#38BDF8", bg: "rgba(56,189,248,0.1)" },
+                    review: { label: "Review", color: "#FFF34A", bg: "rgba(255,243,74,0.1)" },
+                    comment: { label: "Comment", color: "#A78BFA", bg: "rgba(167,139,250,0.1)" },
+                    approved: { label: "Approved", color: "#4ADE80", bg: "rgba(74,222,128,0.1)" },
+                  };
+                  const tl = typeLabels[a.type] || typeLabels.update;
+                  return (
+                    <div key={i} className="flex items-center h-[52px] px-[20px] rounded-[10px] transition-all duration-150"
+                      style={{ borderBottom: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.03)"}
+                      onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                    >
+                      <span className="text-[13px] font-medium flex-1 truncate" style={{ color: "#ffffff" }}>{a.action}</span>
+                      <div className="flex items-center gap-5 flex-shrink-0 ml-6">
+                        <span className="text-[11px]" style={{ color: "#7A7A7A" }}>{a.user}</span>
+                        <span className="text-[10px] font-medium px-2.5 py-[3px] rounded-full" style={{ background: tl.bg, color: tl.color }}>{tl.label}</span>
+                        <span className="text-[11px] w-[36px] text-right" style={{ color: "#555" }}>{a.time}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Right — Lead Feedback */}
+            <div className="rounded-[16px]" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", padding: "28px" }}>
+              <h2 className="text-[18px] font-semibold mb-6" style={{ color: "#ffffff" }}>Lead Feedback</h2>
+              <div className="flex flex-col gap-4">
+                {[
+                  { from: "Design Lead", avatar: "DL", feedback: "The hero section looks great! Can we try a slightly warmer gradient for the CTA?", target: "Homepage Hero v3", time: "15 min ago", color: "#FFF34A" },
+                  { from: "Design Lead", avatar: "DL", feedback: "Increased padding on mobile breakpoints is perfect. Approve to ship.", target: "Settings Page", time: "1 hr ago", color: "#FFF34A" },
+                  { from: "Design Lead", avatar: "DL", feedback: "Button hover states need more contrast — bump opacity from 0.08 to 0.15.", target: "Button Component", time: "3 hr ago", color: "#FFF34A" },
+                  { from: "Design Lead", avatar: "DL", feedback: "The new illustration style works well for onboarding. Let's keep this direction.", target: "Onboarding Flow", time: "5 hr ago", color: "#FFF34A" },
+                  { from: "Design Lead", avatar: "DL", feedback: "Color tokens look good. Make sure semantic names are consistent across light/dark.", target: "Design System", time: "1 day ago", color: "#FFF34A" },
+                ].map((f, i) => (
+                  <div key={i} className="rounded-[12px] transition-all duration-200" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "16px" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.borderColor = "rgba(255,243,74,0.12)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.02)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.04)"; }}
                   >
-                    <div className="w-[32px] h-[32px] rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold" style={{ background: `${item.color}15`, border: `1px solid ${item.color}20`, color: item.color }}>{item.avatar}</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[12px] leading-[1.5]" style={{ color: "#B3B3B3" }}>
-                        <span style={{ color: "#ffffff", fontWeight: 500 }}>{item.name}</span>
-                        {" "}{item.action}{" "}
-                        <span style={{ color: "#ffffff", fontWeight: 500 }}>{item.target}</span>
-                      </p>
+                    <div className="flex items-center gap-2.5 mb-3">
+                      <div className="w-[24px] h-[24px] rounded-full flex items-center justify-center flex-shrink-0 text-[8px] font-bold" style={{ background: "rgba(255,243,74,0.15)", border: "1px solid rgba(255,243,74,0.25)", color: "#FFF34A" }}>{f.avatar}</div>
+                      <span className="text-[11px] font-semibold" style={{ color: "#FFF34A" }}>{f.from}</span>
+                      <span className="text-[10px]" style={{ color: "#555" }}>on {f.target}</span>
                     </div>
-                    <span className="text-[10px] flex-shrink-0" style={{ color: "#7A7A7A" }}>{item.time}</span>
+                    <p className="text-[12px] leading-[1.6]" style={{ color: "#B3B3B3" }}>{f.feedback}</p>
+                    <p className="text-[10px] mt-2.5" style={{ color: "#7A7A7A" }}>{f.time}</p>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Sidebar: Comments + Design Updates */}
-            <div className="flex flex-col gap-[38px]">
-              {/* Panel 2: Recent Comments */}
-              <div className="rounded-[16px] p-6" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <SectionTitle title="Recent Comments" />
-                <div className="flex flex-col gap-3">
-                  {[
-                    { author: "Sarah Chen", avatar: "SC", comment: "The hero section looks great! Can we try a slightly warmer gradient?", target: "Homepage Hero v3", time: "15 min ago", color: "#4ADE80" },
-                    { author: "Jordan Lee", avatar: "JL", comment: "Increased padding on mobile breakpoints as suggested.", target: "Settings Page", time: "1 hr ago", color: "#FFF34A" },
-                    { author: "Priya Patel", avatar: "PP", comment: "The new illustration style is perfect for onboarding.", target: "Onboarding Flow", time: "2 hr ago", color: "#A78BFA" },
-                    { author: "Alex Kim", avatar: "AK", comment: "Button hover states need more contrast.", target: "Button Component", time: "3 hr ago", color: "#38BDF8" },
-                  ].map((c) => (
-                    <Card key={c.comment}>
-                      <div className="flex items-start gap-2.5">
-                        <div className="w-[24px] h-[24px] rounded-full flex items-center justify-center flex-shrink-0 text-[8px] font-bold mt-0.5" style={{ background: `${c.color}15`, border: `1px solid ${c.color}20`, color: c.color }}>{c.avatar}</div>
-                        <div>
-                          <p className="text-[11px] font-medium" style={{ color: "#ffffff" }}>{c.author} <span style={{ color: "#7A7A7A", fontWeight: 400 }}>on {c.target}</span></p>
-                          <p className="text-[11px] mt-1 leading-[1.5]" style={{ color: "#B3B3B3" }}>{c.comment}</p>
-                          <p className="text-[9px] mt-1.5" style={{ color: "#7A7A7A" }}>{c.time}</p>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-
-              {/* Panel 3: Design Updates */}
-              <div className="rounded-[16px] p-6" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <SectionTitle title="Design Updates" />
-                <div className="flex flex-col gap-3">
-                  {[
-                    { title: "Typography scale updated", desc: "Body text increased from 14px to 16px across all pages", time: "1 hr ago", color: "#38BDF8" },
-                    { title: "New color tokens added", desc: "Added 6 new semantic color tokens for status indicators", time: "3 hr ago", color: "#FFF34A" },
-                    { title: "Icon library refreshed", desc: "Replaced 12 outdated icons with new line-style variants", time: "5 hr ago", color: "#4ADE80" },
-                  ].map((u) => (
-                    <Card key={u.title}>
-                      <div className="flex items-start gap-3">
-                        <div className="w-[6px] h-[6px] rounded-full flex-shrink-0 mt-1.5" style={{ background: u.color }} />
-                        <div>
-                          <p className="text-[12px] font-medium" style={{ color: "#ffffff" }}>{u.title}</p>
-                          <p className="text-[10px] mt-0.5 leading-[1.5]" style={{ color: "#7A7A7A" }}>{u.desc}</p>
-                          <p className="text-[9px] mt-1" style={{ color: "#7A7A7A" }}>{u.time}</p>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Team Chat Panel */}
-          <div className="mt-[38px] rounded-[16px] p-6 flex flex-col" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", height: "420px" }}>
-            <SectionTitle title="Team Chat" count={chatMessages.length > 0 ? `${chatMessages.length} messages` : undefined} />
-            <div className="flex-1 overflow-y-auto mb-4 pr-1" style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.1) transparent" }}>
-              {chatMessages.length === 0 && (
-                <div className="flex items-center justify-center h-full">
-                  <p className="text-[13px]" style={{ color: "#7A7A7A" }}>No messages yet. Start a conversation with your team.</p>
-                </div>
-              )}
-              <div className="flex flex-col gap-3">
-                {chatMessages.map((msg) => (
-                  <div key={msg.id} className={`flex gap-3 ${msg.fromRole === "Design Lead" ? "flex-row-reverse" : ""}`}>
-                    <div className="w-[30px] h-[30px] rounded-full flex items-center justify-center flex-shrink-0 text-[9px] font-bold" style={{ background: msg.fromRole === "Design Lead" ? "rgba(255,243,74,0.15)" : "rgba(56,189,248,0.15)", border: `1px solid ${msg.fromRole === "Design Lead" ? "rgba(255,243,74,0.25)" : "rgba(56,189,248,0.25)"}`, color: msg.fromRole === "Design Lead" ? "#FFF34A" : "#38BDF8" }}>{msg.fromAvatar}</div>
-                    <div className={`max-w-[70%] rounded-[12px] px-4 py-2.5 ${msg.fromRole === "Design Lead" ? "rounded-tr-[4px]" : "rounded-tl-[4px]"}`} style={{ background: msg.fromRole === "Design Lead" ? "rgba(255,243,74,0.08)" : "rgba(255,255,255,0.04)", border: `1px solid ${msg.fromRole === "Design Lead" ? "rgba(255,243,74,0.12)" : "rgba(255,255,255,0.06)"}` }}>
-                      <p className="text-[10px] font-semibold mb-1" style={{ color: msg.fromRole === "Design Lead" ? "#FFF34A" : "#38BDF8" }}>{msg.from}</p>
-                      <p className="text-[12px] leading-[1.5]" style={{ color: "#E0E0E0" }}>{msg.text}</p>
-                      <p className="text-[9px] mt-1" style={{ color: "#7A7A7A" }}>{chatTimeAgo(msg.timestamp)}</p>
-                    </div>
-                  </div>
-                ))}
-                <div ref={chatEndRef} />
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <input
-                type="text"
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendChat(); } }}
-                placeholder="Type a message..."
-                className="flex-1 h-[40px] rounded-[10px] px-4 text-[13px] outline-none transition-all duration-200"
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#ffffff" }}
-                onFocus={(e) => { e.target.style.borderColor = "rgba(255,243,74,0.3)"; e.target.style.boxShadow = "0 0 16px rgba(255,243,74,0.06)"; }}
-                onBlur={(e) => { e.target.style.borderColor = "rgba(255,255,255,0.08)"; e.target.style.boxShadow = "none"; }}
-              />
-              <button
-                onClick={handleSendChat}
-                className="h-[40px] px-5 rounded-[10px] text-[13px] font-semibold border-none cursor-pointer transition-all duration-150 flex items-center gap-2"
-                style={{ background: chatInput.trim() ? "#FFF34A" : "rgba(255,243,74,0.15)", color: chatInput.trim() ? "#000000" : "rgba(255,243,74,0.4)" }}
-                onMouseEnter={(e) => { if (chatInput.trim()) { e.currentTarget.style.background = "#FFF86E"; e.currentTarget.style.boxShadow = "0 0 16px rgba(255,243,74,0.2)"; } }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = chatInput.trim() ? "#FFF34A" : "rgba(255,243,74,0.15)"; e.currentTarget.style.boxShadow = "none"; }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                Send
-              </button>
-            </div>
           </div>
         </main>
       )}
@@ -929,7 +818,7 @@ export default function DesignerDashboard() {
       {/* ── Hero Section ── */}
       <section
         className="relative flex flex-col items-center justify-center text-center px-10"
-        style={{ height: "88vh", paddingTop: "92px" }}
+        style={{ height: "100vh", paddingTop: "130px", zIndex: 2, background: "#000000" }}
       >
         <div
           className="absolute bottom-[-20%] left-1/2 -translate-x-1/2 pointer-events-none"
@@ -964,138 +853,79 @@ export default function DesignerDashboard() {
         </div>
       </section>
 
-      {/* ── Main Dashboard Grid ── */}
+      {/* ── Main Dashboard Content ── */}
       <section className="px-6 pb-16">
-        <div className="grid grid-cols-2 gap-5">
+        <div className="flex flex-col" style={{ gap: "38px" }}>
 
-          {/* Panel 1: Design Review Queue */}
-          <div data-reveal data-reveal-delay="0" className="reveal-el rounded-[16px] p-6 flex flex-col" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <div className="flex items-center justify-between mb-[28px]">
-              <h2 className="text-[22px] font-semibold" style={{ color: "#ffffff" }}>Design Review Queue</h2>
-              <span className="text-[11px] font-medium px-2.5 py-1 rounded-full" style={{ background: "rgba(255,243,74,0.1)", color: "#FFF34A", border: "1px solid rgba(255,243,74,0.12)" }}>5 pending</span>
-            </div>
-            <div className="flex flex-col gap-3 flex-1">
+          {/* Level 1: Active Tasks */}
+          <div data-reveal data-reveal-delay="0" className="reveal-el rounded-[16px]" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", padding: "28px" }}>
+            <h2 className="text-[22px] font-semibold mb-6" style={{ color: "#ffffff" }}>Active Tasks</h2>
+            <div className="flex flex-col gap-3">
               {[
-                { name: "Homepage Hero v3", designer: "Sarah Chen", project: "Website Redesign", status: "Pending", color: "#FFF34A" },
-                { name: "Mobile Nav Drawer", designer: "Alex Kim", project: "Mobile App", status: "In Review", color: "#38BDF8" },
-                { name: "Settings Page Layout", designer: "Jordan Lee", project: "Dashboard", status: "Changes Requested", color: "#F87171" },
-                { name: "Onboarding Flow", designer: "Priya Patel", project: "Growth", status: "Pending", color: "#FFF34A" },
-                { name: "Card Component Update", designer: "Marcus Wu", project: "Design System", status: "In Review", color: "#38BDF8" },
-              ].map((item) => (
-                <div key={item.name} className="group relative flex items-center gap-4 p-4 rounded-[12px] cursor-pointer transition-all duration-200" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }} onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; const a = e.currentTarget.querySelector("[data-actions]") as HTMLElement; if (a) a.style.opacity = "1"; }} onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.02)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.04)"; const a = e.currentTarget.querySelector("[data-actions]") as HTMLElement; if (a) a.style.opacity = "0"; }}>
-                  <div className="w-[48px] h-[36px] rounded-[6px] flex-shrink-0 flex items-center justify-center" style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.08))", border: "1px solid rgba(255,255,255,0.06)" }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7A7A7A" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                  </div>
+                { name: "Homepage Hero v3", assignee: "Sarah Chen", status: "In Review", color: "#38BDF8", due: "Mar 10" },
+                { name: "Mobile Nav Drawer", assignee: "Alex Kim", status: "In Progress", color: "#FFF34A", due: "Mar 12" },
+                { name: "Settings Page Layout", assignee: "Jordan Lee", status: "Changes Requested", color: "#F87171", due: "Mar 8" },
+                { name: "Onboarding Flow", assignee: "Priya Patel", status: "In Progress", color: "#FFF34A", due: "Mar 14" },
+                { name: "Card Component Update", assignee: "Marcus Wu", status: "In Review", color: "#38BDF8", due: "Mar 11" },
+              ].map((task) => (
+                <div key={task.name} className="flex items-center gap-4 rounded-[12px] transition-all duration-200" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "16px" }} onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }} onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.02)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.04)"; }}>
+                  <div className="w-[6px] h-[6px] rounded-full flex-shrink-0" style={{ background: task.color }} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium truncate" style={{ color: "#ffffff" }}>{item.name}</p>
-                    <p className="text-[11px] truncate mt-0.5" style={{ color: "#7A7A7A" }}>{item.designer} &middot; {item.project}</p>
+                    <p className="text-[14px] font-medium truncate" style={{ color: "#ffffff" }}>{task.name}</p>
                   </div>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: `${item.color}12`, color: item.color, border: `1px solid ${item.color}18` }}>{item.status}</span>
-                  <div data-actions className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 transition-opacity duration-200 rounded-[8px] px-1.5 py-1" style={{ opacity: 0, background: "rgba(10,10,10,0.95)" }}>
-                    <button className="w-[28px] h-[28px] rounded-[7px] flex items-center justify-center border-none cursor-pointer transition-all duration-150" style={{ background: "rgba(74,222,128,0.12)", color: "#4ADE80" }} title="Approve"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></button>
-                    <button className="w-[28px] h-[28px] rounded-[7px] flex items-center justify-center border-none cursor-pointer transition-all duration-150" style={{ background: "rgba(251,191,36,0.12)", color: "#FBBF24" }} title="Request Changes"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                    <button className="w-[28px] h-[28px] rounded-[7px] flex items-center justify-center border-none cursor-pointer transition-all duration-150" style={{ background: "rgba(255,255,255,0.06)", color: "#B3B3B3" }} title="Comment"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
-                  </div>
+                  <span className="text-[12px] flex-shrink-0" style={{ color: "#7A7A7A" }}>{task.assignee}</span>
+                  <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full flex-shrink-0" style={{ background: `${task.color}12`, color: task.color, border: `1px solid ${task.color}18` }}>{task.status}</span>
+                  <span className="text-[11px] flex-shrink-0" style={{ color: "#555" }}>{task.due}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Panel 2: Design Team Workload */}
-          <div data-reveal data-reveal-delay="100" className="reveal-el rounded-[16px] p-6 flex flex-col" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <div className="flex items-center justify-between mb-[28px]">
-              <h2 className="text-[22px] font-semibold" style={{ color: "#ffffff" }}>Design Team Workload</h2>
-              <span className="text-[11px] font-medium" style={{ color: "#7A7A7A" }}>5 designers</span>
-            </div>
-            <div className="flex flex-col gap-3 flex-1">
-              {[
-                { name: "Sarah Chen", assigned: 6, overdue: 1, completed: 12, avatar: "SC" },
-                { name: "Alex Kim", assigned: 4, overdue: 0, completed: 9, avatar: "AK" },
-                { name: "Jordan Lee", assigned: 7, overdue: 2, completed: 15, avatar: "JL" },
-                { name: "Priya Patel", assigned: 3, overdue: 0, completed: 8, avatar: "PP" },
-                { name: "Marcus Wu", assigned: 5, overdue: 1, completed: 11, avatar: "MW" },
-              ].map((m) => (
-                <div key={m.name} className="flex items-center gap-4 p-4 rounded-[12px] transition-all duration-200" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }} onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }} onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.02)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.04)"; }}>
-                  <div className="w-[36px] h-[36px] rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-bold" style={{ background: "linear-gradient(135deg, rgba(255,243,74,0.15), rgba(255,243,74,0.05))", border: "1px solid rgba(255,243,74,0.12)", color: "#FFF34A" }}>{m.avatar}</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium" style={{ color: "#ffffff" }}>{m.name}</p>
-                    <div className="flex items-center gap-3 mt-1.5">
-                      <div className="flex-1 h-[4px] rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
-                        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(100, (m.assigned / 8) * 100)}%`, background: m.overdue > 0 ? "linear-gradient(90deg, #FFF34A, #F87171)" : "linear-gradient(90deg, #FFF34A, #4ADE80)" }} />
-                      </div>
-                      <span className="text-[10px] font-medium flex-shrink-0" style={{ color: "#7A7A7A" }}>{m.assigned}/8</span>
+          {/* Level 2: My Boards + Upcoming Deadlines side by side */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "38px" }}>
+
+            {/* My Boards */}
+            <div data-reveal data-reveal-delay="100" className="reveal-el rounded-[16px]" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", padding: "28px" }}>
+              <h2 className="text-[22px] font-semibold mb-6 text-center" style={{ color: "#ffffff" }}>My Boards</h2>
+              <div className="flex flex-col gap-3">
+                {[
+                  { name: "Competitive Analysis", updated: "2 hrs ago", color: "#FFF34A" },
+                  { name: "Design Critique Notes", updated: "Yesterday", color: "#38BDF8" },
+                  { name: "Onboarding Ideas", updated: "3 days ago", color: "#4ADE80" },
+                ].map((board) => (
+                  <div key={board.name} className="flex items-center gap-4 rounded-[12px] cursor-pointer transition-all duration-200" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "16px" }} onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }} onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.02)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.04)"; }}>
+                    <div className="w-[32px] h-[32px] rounded-[8px] flex items-center justify-center flex-shrink-0" style={{ background: `${board.color}12`, border: `1px solid ${board.color}18` }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={board.color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>
                     </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-medium truncate" style={{ color: "#ffffff" }}>{board.name}</p>
+                    </div>
+                    <span className="text-[11px] flex-shrink-0" style={{ color: "#7A7A7A" }}>{board.updated}</span>
                   </div>
-                  <div className="flex items-center gap-3 flex-shrink-0">
-                    <div className="text-center"><p className="text-[14px] font-semibold" style={{ color: "#ffffff" }}>{m.assigned}</p><p className="text-[9px] font-medium mt-0.5" style={{ color: "#7A7A7A" }}>Assigned</p></div>
-                    <div className="text-center"><p className="text-[14px] font-semibold" style={{ color: m.overdue > 0 ? "#F87171" : "#4ADE80" }}>{m.overdue}</p><p className="text-[9px] font-medium mt-0.5" style={{ color: "#7A7A7A" }}>Overdue</p></div>
-                    <div className="text-center"><p className="text-[14px] font-semibold" style={{ color: "#4ADE80" }}>{m.completed}</p><p className="text-[9px] font-medium mt-0.5" style={{ color: "#7A7A7A" }}>Done</p></div>
-                  </div>
-                  <button className="h-[28px] px-3 rounded-[7px] text-[11px] font-medium border-none cursor-pointer transition-all duration-150 flex-shrink-0" style={{ background: "rgba(255,255,255,0.04)", color: "#B3B3B3", border: "1px solid rgba(255,255,255,0.06)" }} onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,243,74,0.1)"; e.currentTarget.style.color = "#FFF34A"; e.currentTarget.style.borderColor = "rgba(255,243,74,0.15)"; }} onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#B3B3B3"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; }}>Reassign</button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Panel 3: Design System Health */}
-          <div data-reveal data-reveal-delay="200" className="reveal-el rounded-[16px] p-6 flex flex-col" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <div className="flex items-center justify-between mb-[28px]">
-              <h2 className="text-[22px] font-semibold" style={{ color: "#ffffff" }}>Design System Health</h2>
-              <div className="flex items-center gap-2">
-                <div className="w-[8px] h-[8px] rounded-full" style={{ background: "#FBBF24", boxShadow: "0 0 8px rgba(251,191,36,0.4)" }} />
-                <span className="text-[11px] font-medium" style={{ color: "#FBBF24" }}>3 issues</span>
+                ))}
               </div>
             </div>
-            <div className="flex flex-col gap-3 flex-1">
-              {[
-                { title: "Outdated Button Component", desc: "3 screens using outdated button component", severity: "Warning", color: "#FBBF24" },
-                { title: "Typography Mismatch", desc: "Typography mismatch detected in onboarding flow", severity: "Critical", color: "#F87171" },
-                { title: "Color Token Inconsistency", desc: "Color token inconsistency across 5 components", severity: "Warning", color: "#FBBF24" },
-              ].map((issue) => (
-                <div key={issue.title} className="relative flex items-start gap-4 p-4 rounded-[12px] transition-all duration-200" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }} onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }} onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.02)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.04)"; }}>
-                  <div className="w-[36px] h-[36px] rounded-[8px] flex items-center justify-center flex-shrink-0" style={{ background: `${issue.color}10`, border: `1px solid ${issue.color}18` }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={issue.color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium" style={{ color: "#ffffff" }}>{issue.title}</p>
-                    <p className="text-[11px] mt-1" style={{ color: "#7A7A7A" }}>{issue.desc}</p>
-                  </div>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 mt-0.5" style={{ background: `${issue.color}12`, color: issue.color, border: `1px solid ${issue.color}18` }}>{issue.severity}</span>
-                </div>
-              ))}
-            </div>
-          </div>
 
-          {/* Panel 4: Recent Design Activity */}
-          <div data-reveal data-reveal-delay="300" className="reveal-el rounded-[16px] p-6 flex flex-col" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <div className="flex items-center justify-between mb-[28px]">
-              <h2 className="text-[22px] font-semibold" style={{ color: "#ffffff" }}>Recent Design Activity</h2>
-              <span className="text-[11px] font-medium" style={{ color: "#7A7A7A" }}>Today</span>
-            </div>
-            <div className="flex flex-col gap-0 flex-1 overflow-y-auto pr-1" style={{ maxHeight: "420px" }}>
-              {[
-                { avatar: "SC", name: "Sarah Chen", action: "uploaded a new screen", target: "Homepage Hero v3", time: "2 min ago", color: "#4ADE80" },
-                { avatar: "AK", name: "Alex Kim", action: "updated component", target: "Primary Button", time: "18 min ago", color: "#38BDF8" },
-                { avatar: "JL", name: "Jordan Lee", action: "requested review for", target: "Settings Page Layout", time: "34 min ago", color: "#FFF34A" },
-                { avatar: "PP", name: "Priya Patel", action: "commented on", target: "Onboarding Flow", time: "1 hr ago", color: "#A78BFA" },
-                { avatar: "MW", name: "Marcus Wu", action: "uploaded a new screen", target: "Card Component v2", time: "1 hr ago", color: "#4ADE80" },
-                { avatar: "SC", name: "Sarah Chen", action: "approved", target: "Mobile Nav Drawer", time: "2 hr ago", color: "#4ADE80" },
-                { avatar: "AK", name: "Alex Kim", action: "requested changes on", target: "Checkout Flow", time: "2 hr ago", color: "#FBBF24" },
-                { avatar: "JL", name: "Jordan Lee", action: "updated component", target: "Input Field", time: "3 hr ago", color: "#38BDF8" },
-                { avatar: "PP", name: "Priya Patel", action: "uploaded a new screen", target: "Profile Settings", time: "4 hr ago", color: "#4ADE80" },
-                { avatar: "MW", name: "Marcus Wu", action: "commented on", target: "Design System Colors", time: "5 hr ago", color: "#A78BFA" },
-              ].map((item, i) => (
-                <div key={`${item.avatar}-${i}`} className="flex items-center gap-3 py-3 transition-all duration-150" style={{ borderBottom: i < 9 ? "1px solid rgba(255,255,255,0.04)" : "none" }} onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.03)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
-                  <div className="w-[30px] h-[30px] rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold" style={{ background: `${item.color}15`, border: `1px solid ${item.color}20`, color: item.color }}>{item.avatar}</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[12px] leading-[1.5] truncate" style={{ color: "#B3B3B3" }}>
-                      <span style={{ color: "#ffffff", fontWeight: 500 }}>{item.name}</span>{" "}{item.action}{" "}<span style={{ color: "#ffffff", fontWeight: 500 }}>{item.target}</span>
-                    </p>
+            {/* Upcoming Deadlines */}
+            <div data-reveal data-reveal-delay="200" className="reveal-el rounded-[16px]" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", padding: "28px" }}>
+              <h2 className="text-[22px] font-semibold mb-6 text-center" style={{ color: "#ffffff" }}>Upcoming Deadlines</h2>
+              <div className="flex flex-col gap-3">
+                {[
+                  { name: "Settings Page Layout", due: "Mar 8", urgent: true },
+                  { name: "Homepage Hero v3", due: "Mar 10", urgent: false },
+                  { name: "Card Component Update", due: "Mar 11", urgent: false },
+                ].map((item) => (
+                  <div key={item.name} className="flex items-center gap-4 rounded-[12px] transition-all duration-200" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", padding: "16px" }} onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }} onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.02)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.04)"; }}>
+                    <div className="w-[6px] h-[6px] rounded-full flex-shrink-0" style={{ background: item.urgent ? "#F87171" : "#FFF34A" }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-medium truncate" style={{ color: "#ffffff" }}>{item.name}</p>
+                    </div>
+                    <span className="text-[12px] font-medium flex-shrink-0" style={{ color: item.urgent ? "#F87171" : "#7A7A7A" }}>{item.due}</span>
                   </div>
-                  <span className="text-[10px] flex-shrink-0" style={{ color: "#7A7A7A" }}>{item.time}</span>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
+
           </div>
 
         </div>
@@ -1106,7 +936,7 @@ export default function DesignerDashboard() {
           TEAM PAGE (Design Lead — full access)
          ════════════════════════════════════════════ */}
       {activeView === "Team" && (
-        <main className="pt-[108px] px-6 pb-16">
+        <main style={{ paddingTop: "130px", paddingLeft: "24px", paddingRight: "24px", paddingBottom: "64px" }}>
           <BackButton />
           <div className="flex items-center justify-between mb-1">
             <h1 className="text-[28px] font-bold" style={{ color: "#ffffff" }}>Team</h1>
@@ -1200,6 +1030,157 @@ export default function DesignerDashboard() {
               </div>
             </div>
 
+          </div>
+        </main>
+      )}
+
+      {/* ── OrbitJam ── */}
+      {activeView === "OrbitJam" && !selectedBoard && (
+        <main style={{ paddingTop: "130px", paddingLeft: "24px", paddingRight: "24px", paddingBottom: "64px" }}>
+          <BackButton />
+          <div className="flex items-center justify-between mb-1">
+            <h1 className="text-[28px] font-bold" style={{ color: "#ffffff" }}>OrbitJam</h1>
+          </div>
+          <p className="text-[14px] mb-10" style={{ color: "#7A7A7A" }}>Collaborative boards for brainstorming and visual thinking</p>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "38px" }}>
+            {[
+              { id: "competitive-analysis", name: "Competitive Analysis", desc: "Market research & competitor comparison", color: "#FFF34A", date: "Mar 5, 2026" },
+              { id: "design-critique", name: "Design Critique Notes", desc: "Feedback from weekly design reviews", color: "#38BDF8", date: "Mar 3, 2026" },
+              { id: "onboarding-ideas", name: "Onboarding Ideas", desc: "User onboarding flow explorations", color: "#4ADE80", date: "Feb 28, 2026" },
+            ].map((board) => (
+              <div
+                key={board.id}
+                className="rounded-[16px] cursor-pointer transition-all duration-200"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", padding: "28px" }}
+                onClick={() => setSelectedBoard(board.id)}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.07)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.14)"; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 32px rgba(0,0,0,0.3)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
+              >
+                {/* Board preview placeholder */}
+                <div className="w-full rounded-[10px] mb-5 flex items-center justify-center" style={{ height: "140px", background: `linear-gradient(135deg, ${board.color}12, ${board.color}06)`, border: `1px solid ${board.color}18` }}>
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={board.color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <line x1="3" y1="9" x2="21" y2="9" />
+                    <line x1="9" y1="21" x2="9" y2="9" />
+                  </svg>
+                </div>
+                <h3 className="text-[16px] font-semibold mb-2" style={{ color: "#ffffff" }}>{board.name}</h3>
+                <p className="text-[12px] mb-4" style={{ color: "#7A7A7A" }}>{board.desc}</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px]" style={{ color: "#555" }}>Last edited {board.date}</span>
+                  <div className="flex items-center gap-1">
+                    <div className="w-[20px] h-[20px] rounded-full flex items-center justify-center text-[8px] font-bold" style={{ background: `${board.color}20`, color: board.color }}>AK</div>
+                    <div className="w-[20px] h-[20px] rounded-full flex items-center justify-center text-[8px] font-bold" style={{ background: "rgba(255,255,255,0.08)", color: "#7A7A7A", marginLeft: "-4px" }}>+2</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </main>
+      )}
+
+      {/* ── OrbitJam Board View (full-screen image + comments) ── */}
+      {activeView === "OrbitJam" && selectedBoard && (
+        <main style={{ paddingTop: "130px", paddingLeft: "0", paddingRight: "0", paddingBottom: "64px" }}>
+          <div style={{ paddingLeft: "24px", paddingRight: "24px" }}>
+            <button
+              className="text-[12px] font-medium mb-4 border-none cursor-pointer transition-colors duration-150 flex items-center gap-1.5"
+              style={{ background: "transparent", color: "#7A7A7A" }}
+              onMouseEnter={(e) => e.currentTarget.style.color = "#ffffff"}
+              onMouseLeave={(e) => e.currentTarget.style.color = "#7A7A7A"}
+              onClick={() => { setSelectedBoard(null); setBoardComment(""); setBoardComments([]); }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              Back to Boards
+            </button>
+
+            <h1 className="text-[22px] font-bold mb-6" style={{ color: "#ffffff" }}>
+              {selectedBoard === "competitive-analysis" ? "Competitive Analysis" : selectedBoard === "design-critique" ? "Design Critique Notes" : "Onboarding Ideas"}
+            </h1>
+          </div>
+
+          {/* Full-width landscape board image — takes entire screen width */}
+          <div
+            className="w-full"
+            style={{
+              maxHeight: "calc(100vh - 240px)",
+              overflow: "hidden",
+              background: "#000",
+            }}
+          >
+            <img
+              src="/orbitJAM.avif"
+              alt="OrbitJam Board"
+              style={{
+                width: "100%",
+                height: "100%",
+                maxHeight: "calc(100vh - 240px)",
+                objectFit: "contain",
+                display: "block",
+              }}
+            />
+          </div>
+
+          {/* Comment section */}
+          <div style={{ paddingLeft: "24px", paddingRight: "24px" }}>
+            <div className="mt-[32px]">
+              <h3 className="text-[15px] font-semibold mb-5" style={{ color: "#ffffff" }}>
+                Comments
+                {boardComments.length > 0 && <span className="ml-2 text-[12px] font-normal" style={{ color: "#7A7A7A" }}>({boardComments.length})</span>}
+              </h3>
+
+              {/* Existing comments */}
+              {boardComments.length > 0 && (
+                <div className="flex flex-col gap-4 mb-6">
+                  {boardComments.map((c) => (
+                    <div key={c.id} className="flex gap-3">
+                      <div className="w-[32px] h-[32px] rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0" style={{ background: "rgba(255,243,74,0.12)", color: "#FFF34A" }}>{c.author}</div>
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[13px] font-semibold" style={{ color: "#ffffff" }}>Design Lead</span>
+                          <span className="text-[11px]" style={{ color: "#555" }}>
+                            {(() => {
+                              const diff = Date.now() - c.time;
+                              if (diff < 60000) return "just now";
+                              if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+                              if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+                              return `${Math.floor(diff / 86400000)}d ago`;
+                            })()}
+                          </span>
+                        </div>
+                        <p className="text-[13px]" style={{ color: "#B3B3B3" }}>{c.text}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add comment input */}
+              <div className="flex gap-3">
+                <div className="w-[32px] h-[32px] rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0" style={{ background: "rgba(255,243,74,0.12)", color: "#FFF34A" }}>DL</div>
+                <div className="flex-1 flex gap-2">
+                  <input
+                    type="text"
+                    value={boardComment}
+                    onChange={(e) => setBoardComment(e.target.value)}
+                    placeholder="Add a comment..."
+                    className="flex-1 h-[40px] rounded-[10px] px-4 text-[13px] outline-none transition-all duration-200"
+                    style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#ffffff" }}
+                    onFocus={(e) => { e.target.style.borderColor = "rgba(255,243,74,0.3)"; e.target.style.boxShadow = "0 0 16px rgba(255,243,74,0.06)"; }}
+                    onBlur={(e) => { e.target.style.borderColor = "rgba(255,255,255,0.08)"; e.target.style.boxShadow = "none"; }}
+                    onKeyDown={(e) => { if (e.key === "Enter") addBoardComment(); }}
+                  />
+                  <button
+                    className="h-[40px] px-5 rounded-[10px] text-[13px] font-semibold border-none cursor-pointer transition-all duration-150"
+                    style={{ background: boardComment.trim() ? "#FFF34A" : "rgba(255,243,74,0.15)", color: boardComment.trim() ? "#000000" : "rgba(255,243,74,0.4)" }}
+                    onClick={addBoardComment}
+                    onMouseEnter={(e) => { if (boardComment.trim()) e.currentTarget.style.background = "#FFF86E"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = boardComment.trim() ? "#FFF34A" : "rgba(255,243,74,0.15)"; }}
+                  >Send</button>
+                </div>
+              </div>
+            </div>
           </div>
         </main>
       )}

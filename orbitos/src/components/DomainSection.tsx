@@ -47,8 +47,8 @@ export default function DomainSection() {
           transition: "opacity 0.6s ease, transform 0.6s ease",
         }}
       >
-        {/* Top row — two cards centered */}
-        <div className="flex flex-col sm:flex-row gap-[32px] w-full sm:w-auto justify-center">
+        {/* Top row — Designing + IT Project side by side */}
+        <div className="flex flex-col sm:flex-row w-full sm:w-auto justify-center" style={{ gap: "38px" }}>
           {domains.slice(0, 2).map((domain, index) => (
             <DomainCard
               key={domain}
@@ -60,8 +60,8 @@ export default function DomainSection() {
             />
           ))}
         </div>
-        {/* Bottom row — one card centered */}
-        <div className="flex justify-center w-full sm:w-auto mt-[100px]">
+        {/* Bottom row — Content centered below, same gap */}
+        <div className="flex justify-center w-full sm:w-auto" style={{ marginTop: "38px" }}>
           <DomainCard
             label={domains[2]}
             selected={selected === domains[2]}

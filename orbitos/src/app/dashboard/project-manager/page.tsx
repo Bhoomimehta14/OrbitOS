@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getTeam, addTeamMember, assignTask, removeTeamMember, type TeamMember } from "@/lib/team";
 import { getProjects, addProject, archiveProject, unarchiveProject, addProjectTask, updateTaskStatus, projectTimeAgo, type Project, type ProjectTask } from "@/lib/projects";
 import { getPMTasks, addPMTask, updatePMTaskStatus, removePMTask, type PMTask } from "@/lib/pm-tasks";
@@ -46,6 +47,9 @@ export default function ProjectManagerDashboard() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const createRef = useRef<HTMLDivElement>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const searchRef = useRef<HTMLDivElement>(null);
   const [activeView, setActiveView] = useState<string | null>(null);
@@ -262,10 +266,11 @@ export default function ProjectManagerDashboard() {
     function handleClick(e: MouseEvent) {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchOpen(false);
       if (createRef.current && !createRef.current.contains(e.target as Node)) setCreateOpen(false);
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false);
       // nav dropdowns removed
     }
     function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") { setSearchOpen(false); }
+      if (e.key === "Escape") { setSearchOpen(false); setProfileOpen(false); }
       if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); setSearchOpen(true); }
     }
     document.addEventListener("mousedown", handleClick);
@@ -349,15 +354,7 @@ export default function ProjectManagerDashboard() {
             className="flex items-center gap-2.5 no-underline transition-opacity duration-200 hover:opacity-80 flex-shrink-0"
             onClick={(e) => { e.preventDefault(); setActiveView(null); }}
           >
-            <div
-              className="w-[28px] h-[28px] rounded-[8px] flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg, #7FBEC0, #A7D7D6)" }}
-            >
-              <span className="text-[13px] font-bold" style={{ color: "#000000" }}>O</span>
-            </div>
-            <span className="text-[17px] font-semibold tracking-[-0.02em]" style={{ color: "#ffffff" }}>
-              OrbitOS
-            </span>
+            <span className="text-[24px] font-bold tracking-[-0.02em] ml-4" style={{ color: "#ffffff" }}>OrbitOS</span>
           </a>
 
           {/* Center — Search bar */}
@@ -497,6 +494,32 @@ export default function ProjectManagerDashboard() {
                     <span className="text-[13px] font-medium">{opt.label}</span>
                   </button>
                 ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Profile */}
+          <div className="relative flex-shrink-0" ref={profileRef}>
+            <button
+              onClick={() => setProfileOpen(!profileOpen)}
+              className="w-[36px] h-[36px] rounded-full flex items-center justify-center text-[13px] font-bold cursor-pointer border-none transition-all duration-200"
+              style={{ background: profileOpen ? "rgba(127,190,192,0.25)" : "linear-gradient(135deg, rgba(127,190,192,0.18), rgba(155,207,208,0.12))", color: "#ffffff", border: "1px solid rgba(127,190,192,0.25)" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(127,190,192,0.25)"; e.currentTarget.style.borderColor = "rgba(127,190,192,0.4)"; }}
+              onMouseLeave={(e) => { if (!profileOpen) { e.currentTarget.style.background = "linear-gradient(135deg, rgba(127,190,192,0.18), rgba(155,207,208,0.12))"; e.currentTarget.style.borderColor = "rgba(127,190,192,0.25)"; } }}
+            >
+              Y
+            </button>
+            <div
+              className="absolute top-[44px] right-0 w-[180px] rounded-[12px] overflow-hidden transition-all duration-250"
+              style={{ background: "#0A0A0A", border: profileOpen ? "1px solid rgba(127,190,192,0.12)" : "1px solid transparent", boxShadow: profileOpen ? "0 16px 48px rgba(0,0,0,0.9), 0 0 0 1px rgba(0,0,0,1)" : "none", maxHeight: profileOpen ? "120px" : "0px", opacity: profileOpen ? 1 : 0, pointerEvents: profileOpen ? "auto" : "none" }}
+            >
+              <div className="p-2">
+                <button className="w-full px-4 py-3 text-left cursor-pointer border-none rounded-[8px] transition-all duration-150 flex items-center gap-3" style={{ background: "transparent", color: "#ffffff" }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "rgba(127,190,192,0.1)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"} onClick={() => setProfileOpen(false)}
+                ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7FBEC0" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span className="text-[13px] font-medium">Set up Profile</span></button>
+                <button className="w-full px-4 py-3 text-left cursor-pointer border-none rounded-[8px] transition-all duration-150 flex items-center gap-3" style={{ background: "transparent", color: "#ffffff" }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "rgba(127,190,192,0.1)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"} onClick={() => { setProfileOpen(false); router.push("/"); }}
+                ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A7C4C5" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span className="text-[13px] font-medium">Logout</span></button>
               </div>
             </div>
           </div>

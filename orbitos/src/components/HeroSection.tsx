@@ -38,12 +38,11 @@ export default function HeroSection() {
         <Tagline />
         <Link
           href="/login"
-          className="mt-10 px-8 py-3 rounded-[14px] text-[15px] font-semibold no-underline transition-all duration-300 active:scale-[0.98]"
+          className="mt-10 text-[15px] font-semibold no-underline transition-all duration-300 hover:opacity-80"
           style={{
-            background: "linear-gradient(135deg, rgba(59,130,246,0.3), rgba(56,189,248,0.22))",
             color: "#f0f4ff",
-            border: "1px solid rgba(100,170,255,0.15)",
-            boxShadow: "0 0 24px rgba(59,130,246,0.1), inset 0 1px 0 rgba(160,200,255,0.08)",
+            background: "none",
+            border: "none",
           }}
         >
           Get Started

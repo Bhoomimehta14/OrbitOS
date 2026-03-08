@@ -17,6 +17,10 @@ const roleDashboardMap: Record<string, string> = {
   "UI Designer": "/dashboard/product-designer",
   "Project Manager": "/dashboard/project-manager",
   "Developer": "/dashboard/developer",
+  "Content Manager": "/dashboard/content-strategist",
+  "Copywriter": "/dashboard/content-strategist",
+  "SEO Specialist": "/dashboard/content-strategist",
+  "Editor": "/dashboard/content-strategist",
 };
 
 export default function LoginPage() {
