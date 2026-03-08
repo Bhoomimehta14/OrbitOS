@@ -1,10 +1,37 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { Suspense, useState, useRef, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 
-const roles = ["Project Manager", "Developer", "Designer", "Content Manager"];
+const rolesByDomain: Record<string, string[]> = {
+  Designing: ["Design Lead", "Product Designer", "UI Designer", "UX Researcher"],
+  "IT Project": ["Project Manager", "Developer", "QA Engineer", "DevOps Engineer"],
+  Content: ["Content Manager", "Copywriter", "SEO Specialist", "Editor"],
+};
+
+const defaultRoles = ["Project Manager", "Developer", "Designer", "Content Manager"];
+
+const roleDashboardMap: Record<string, string> = {
+  "Design Lead": "/dashboard/designer",
+  "Product Designer": "/dashboard/product-designer",
+  "UI Designer": "/dashboard/product-designer",
+  "Project Manager": "/dashboard/project-manager",
+};
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const domain = searchParams.get("domain");
+  const roles = domain && rolesByDomain[domain] ? rolesByDomain[domain] : defaultRoles;
+
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("");
   const [roleOpen, setRoleOpen] = useState(false);
@@ -250,6 +277,12 @@ export default function LoginPage() {
           onMouseLeave={(e) => {
             e.currentTarget.style.background = "linear-gradient(135deg, rgba(59,130,246,0.25), rgba(56,189,248,0.18))";
             e.currentTarget.style.boxShadow = "0 0 30px rgba(59,130,246,0.1), 0 4px 20px rgba(0,0,0,0.2), inset 0 1px 0 rgba(160,200,255,0.08)";
+          }}
+          onClick={() => {
+            const dest = roleDashboardMap[role];
+            if (dest) {
+              router.push(dest);
+            }
           }}
         >
           Continue
