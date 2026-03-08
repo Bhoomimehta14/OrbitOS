@@ -65,7 +65,7 @@ export default function DomainSection() {
           <DomainCard
             label={domains[2]}
             selected={selected === domains[2]}
-            onClick={() => setSelected(domains[2])}
+            onClick={() => handleSelect(domains[2])}
             index={2}
             isVisible={isVisible}
           />
