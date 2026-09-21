@@ -1,0 +1,11 @@
+# IDE / OS
+.idea/
+.claude/
+.DS_Store
+
+# Dependencies
+node_modules/
+
+# Env
+.env
+.env.local
